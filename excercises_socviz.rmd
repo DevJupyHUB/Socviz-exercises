@@ -1,0 +1,725 @@
+---
+title: "socviz_excercises"
+author: "Bernadett Piros"
+date: "2023-04-18"
+output: html_document
+source: https://socviz.co
+---
+
+```{r load libraries, message=FALSE, warning=FALSE}
+library(gapminder)
+library(socviz)
+library(here)
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(ggrepel)
+library(scales)
+library(ggthemes)
+library(RColorBrewer)
+library(viridis)
+library(scico)
+library(paletteer)
+library(ggsci)
+library(viridisLite)
+library(wesanderson)
+```
+
+
+# 3 Make a plot
+
+**1. What happens when you put the `geom_smooth()` function before `geom_point()` instead of after it? What does this tell you about how the plot is drawn? Think about how this might be useful when drawing plots.**
+
+
+```{r 3.1, message=FALSE}
+p <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y=lifeExp)) + theme_bw()
+p1 <- p + geom_point(alpha = 0.3) + 
+    geom_smooth() +
+    scale_x_continuous(labels = dollar) +
+    labs(x = "GDP per Capita", y = "Life expectancy in years", title = "(Figure 3.6) point + smoother") 
+p2 <- p + geom_smooth() +
+  geom_point(alpha = 0.3) +
+  scale_x_continuous(labels = dollar) +
+  labs(x = NULL, y = NULL, title = "smoother + point") +
+  theme(plot.title = element_text(face = "bold", colour = "red"))
+p1+p2+labs(caption = "Source: Gapminder data")
+```
+
+
+If `geom_smooth()` function is put before `geom_point()` then the smoother line is being placed behind the scatter points, which shows that layers are stacked in order of their geom appearance. The layered graphics allows to build a plot step by step so debugging becomes easier because it does not require to re-write the entire code but only make adjustment to the relevant layer.
+
+**2. Change the mappings in the `aes()` function so that you plot Life Expectancy against population (pop) rather than per capita GDP. What does that look like? What does it tell you about the unit of observation in the dataset?**
+
+```{r 3.2, echo=TRUE, message=FALSE}
+p <- ggplot(data = gapminder, mapping = aes(x = pop, y = lifeExp)) + theme_bw()
+p1 <- p + geom_point(alpha = 0.3) +
+  geom_smooth() +
+  labs(x = "Population", y = "Life expectancy in years", title = "No axis transformation")
+p2 <- p + geom_smooth() +
+  geom_point(alpha = 0.3) +
+  scale_x_log10() +
+  labs(x = "Population (log scale)", y = NULL, title = "Log10 x axis")
+p1+p2+labs(caption = "Source: Gapminder data")&theme(plot.title = element_text(face = "bold", colour = "red")) 
+```
+
+
+Data is skewed on the left side. Population is a continuous variable that have a large range so this plot looks better to find pattern or trend if the x axis is transformed into a log scale.
+
+**3. Try some alternative scale mappings. Besides `scale_x_log10()` you can try `scale_x_sqrt()` and `scale_x_reverse()`. There are corresponding functions for y-axis transformations. Just write y instead of x. Experiment with them to see what sort of effect they have on the plot, and whether they make any sense to use.**
+
+```{r 3.3, message=FALSE}
+p <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y = lifeExp)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth() +
+  theme_bw()
+p1 <- p + scale_x_log10() + labs(x = "GDP per capita", y = "Life expectancy in years", title = "x log10") 
+p2 <- p + scale_x_sqrt(breaks = c(0, 25000, 100000)) + labs(x = NULL, y = NULL, title = "x sqrt") 
+p3 <- p + scale_x_reverse() + labs(x = NULL, y = NULL, title = "x reverse") 
+p4 <- p + scale_y_log10() + labs(x = "GDP per capita", y = "Life expectancy in years", title = "y log10") 
+p5 <- p + scale_y_sqrt() + labs(x = NULL, y = NULL, title = " y sqrt") 
+p6 <- p +scale_y_reverse() + labs(x = NULL, y = NULL, title = " y reverse") 
+p1+p2+p3+p4+p5+p6+labs(caption = "Source: Gapminder data")&theme(plot.title = element_text(face = "bold", colour = "red")) 
+```
+
+
+When there is a large value range of a variable in a dataset, the use of a logarithmic scale could provide better data visualization where the tick marks on the axis will be labeled using scientific notation. In this case life expectancy does not have a large value range so these y axis transformations does not make any sense.
+
+The square-root transformation is commonly used for discrete data  while log10 transformation is used for continuous data. The reverse transformation can be more visually appealing when someone want to see the minimum value of a chart. 
+
+Log transformation can make the data linear and constraint it to a match narrower range. Square root transformation works a similar way but it is a weaker transformation than log10. If there are big outliers in the data then log10 would be better to use because log10 levels off more quickly making the extreme values become less important. 
+
+**4. What happens if you map color to year instead of continent? Is the result what you expected? Think about what class of object year is. Remember you can get a quick look at the top of the data, which includes some shorthand information on the class of each variable, by typing gapminder.**
+
+```{r 3.4, message=FALSE}
+p <- ggplot(data = gapminder,mapping = aes(x = gdpPercap, y = lifeExp)) + theme_bw()
+p1 <- p + geom_point(mapping = aes(color = continent), alpha = 0.5) +
+  geom_smooth(method = "loess") +
+  scale_x_log10(labels = dollar) +
+  labs(x = "GDP per Capita", y = "Life expectancy in years", color = "Continent", title = "(Figure 3.16) Continent")
+p2 <- p + geom_point(mapping = aes(color = year), alpha = 0.5) +
+  geom_smooth(method = "loess") +
+  scale_x_log10(labels = dollar) +
+  labs(x = NULL, y = NULL, color = "Year", title = "Year") +
+  theme(plot.title = element_text(face = "bold", colour = "red"))
+p1+p2+labs(caption = "Source: Gapminder data")
+```
+
+
+Continent is an unordered categorical variable that uses distinct colors to differentiate data points while year is a numerical variable that uses continuous color gradients.
+
+**5. Instead of mapping `color = year`, what happens if you try `color = factor(year)`?**
+
+```{r 3.5, message=FALSE}
+p <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y = lifeExp)) + theme_bw()
+p1 <- p + geom_point(mapping = aes(color = year), alpha = 0.5) +
+  geom_smooth(method = "loess") +
+  scale_x_log10(labels = dollar) +
+  labs(x = "GDP per Capita", y = "Life expectancy in years", title = "Year", color = "Year") 
+p2 <- p + geom_point(mapping = aes(color = factor(year), alpha = 0.5)) +
+  geom_smooth(method = "loess") +
+  scale_x_log10(labels = dollar) +
+  scale_alpha(guide = "none") +
+  labs(x = NULL, y = NULL, color = "Year", title = "Factor-year") +
+  theme(plot.title = element_text(face = "bold", colour = "red"))
+p1+p2+labs(caption = "Source: Gapminder data")
+```
+
+
+Year is a continuous variable but once it is transformed into an unordered categorical variable it becomes discrete and uses distinct colors.
+
+**6. As you look at these different scatterplots, think about Figure 3.13 a little more critically. We worked it up to the point where it was reasonably polished, but is it really the best way to display this country-year data? What are we gaining and losing by ignoring the temporal and country-level structure of the data? How could we do better? Sketch out what an alternative visualization might look like.**
+
+```{r 3.6, message=FALSE}
+po <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y=lifeExp)) +
+  geom_point(alpha = 0.3) +
+  scale_x_log10(labels = dollar) +
+  theme_bw()
+p1 <- po + geom_smooth(method = "gam") +
+  labs(x = "GDP Per Capita", y = "Life Expectancy in Years",
+       title = "Figure 3.13", subtitle = "Data points are country-years") 
+ps <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y=lifeExp, color = continent)) +
+  geom_point(alpha = 0.3) +
+  scale_x_log10(labels = dollar) +
+  theme_bw()
+p2 <- ps + geom_smooth(aes(fill = continent), method = "gam", show.legend = FALSE) +
+  labs(x = NULL, y = NULL, color = "Continent", title = "Mapping a variable to color") +
+  theme(plot.title = element_text(face = "bold", colour = "red"),
+        legend.title=element_blank())
+p1+p2+labs(caption = "Source: Gapminder data")
+```
+
+
+We can map a variable, such as continent, to the color aesthetic and we can add one smoothing line to each continent. If we also would like to shade the standard error ribbon of each line to match its dominant color then we need to set fill into the aesthetic. With these aesthetic settings we can improve the overall look of the plot.
+
+The fill aesthetic controls the color of the standard error ribbon. If we want to turn off the legend of smoother lines then the fill aesthetic must be mapped inside the geom_smooth layer and  `show.legend = FALSE` must also be set but outside of the aesthetic. 
+
+# 4 Show the right numbers
+
+**1. Revisit the `gapminder` plots at the beginning of the chapter and experiment with different ways to facet the data. Try plotting population and per capita GDP while faceting on year, or even on country. In the latter case you will get a lot of panels, and plotting them straight to the screen may take a long time. Instead, assign the plot to an object and save it as a PDF file to your figures/ folder. Experiment with the height and width of the figure.**
+
+Faceted plots may fill up a lot of space so after a consideration only a subset of data is being used in this exercise.
+
+Facet warp, as a series of panels wrapped into a grid, is generally more useful because it produces plots only for the combinations of variables that have values while facet grid also produces empty plots. Facet grid is more complex and can cross-classify data in a two dimensional grid.
+
+In this exercise only facet grid is used to experiment with faceting.
+
+```{r 4.1}
+selected_years <- gapminder %>% 
+  filter(country != "Kuwait" & year %in% c(1952, 1992, 2007))
+p <- ggplot(data = selected_years, mapping = aes(x = pop, y = gdpPercap, color = continent, size = pop)) +
+  geom_point(alpha = 0.5) +
+  scale_color_paletteer_d("wesanderson::FantasticFox1") +
+  theme_bw()
+p +  facet_grid(. ~ year) +
+  scale_x_log10(labels = label_log(digits = 2)) +
+  scale_y_continuous(labels = dollar) +
+  labs(x = "Population", y = "GDP per Capita", title = "Facet grid across columns",
+       subtitle = "Kuwait excluded", caption = "Source: Gapminder data") +
+  guides(size = "none") +
+  theme(strip.text = element_text(face = "bold", colour = "red"), panel.grid.minor = element_blank(),
+        legend.title=element_blank())
+```
+
+
+Faceting across columns facilitates comparisons of y position, because the vertical scales are aligned.
+
+```{r 4.1.1}
+selected_years <- gapminder %>% 
+  filter(country != "Kuwait" & year %in% c(1952, 1992, 2007) )
+p <- ggplot(data = selected_years, mapping = aes(x = pop, y = gdpPercap, color = continent, size = pop)) +
+  geom_point(alpha = 0.5) +
+  scale_color_brewer(palette = "Dark2") +
+  theme_bw()
+p +  facet_grid(year ~ .) +
+  scale_x_log10(labels = label_log(digits = 2)) +
+  scale_y_continuous(labels = dollar) +
+  labs(x = "Population", y = "GDP per Capita", title = "Facet grid across rows",
+          subtitle = "Kuwait excluded", caption = "Source: Gapminder data") +
+  guides(size = "none") +
+  theme(strip.text = element_text(face = "bold", colour = "red"), legend.title=element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+
+Faceting across rows facilitates comparison of x position because the horizontal scales are aligned. This makes it particularly useful for comparing distributions.
+
+```{r 4.1.2, message=FALSE}
+selected_years <- gapminder %>% 
+  filter(country != "Kuwait" & year %in% c(1952, 1992, 2007) )
+b <- ggplot(data = selected_years, mapping = aes(x = pop, y = gdpPercap )) + theme_minimal()
+p <- b + geom_point(aes(color = continent, size = pop), alpha = 0.7) +
+  scale_color_aaas() +
+  facet_grid(year ~ continent) +
+  scale_x_log10(labels = label_log(digits = 2)) +
+  scale_y_continuous(labels = dollar) +
+  labs(x = "Population", y = "GDP per Capita", title = "Facet grid across columns and rows",
+          subtitle = "Kuwait excluded", caption = "Source: Gapminder data") +
+  guides(color = "none", size = "none") +
+  theme(plot.title = element_text(face = "bold", colour = "red"), strip.text = element_text(face = "bold", colour = "red"),
+        panel.grid.minor = element_blank())
+p
+```
+
+
+Faceting across columns and rows facilitates comparison of x and y positions because both the vertical and horizontal scales are aligned.It is most useful when there are two discrete variables, and all combinations of the variables exist in the data.
+
+```{r 4.1.3}
+p <- ggplot(data = gapminder, mapping = aes(x = pop, y = gdpPercap)) +  geom_point() 
+p_out <- p + facet_wrap(~ country) + labs(x = "Population", y = "GDP per Capita",caption = "Source: Gapminder data")
+ggsave(here("figures", "population_vs_gdp_.pdf"), plot = p_out, height = 8, width = 10, units = "in")
+ggsave(here("figures", "population_vs_gdp_bigger.pdf"), plot = p_out, height = 12, width = 14, units = "in")
+ggsave(here("figures", "population_vs_gdp_smaller.pdf"), plot = p_out, height = 6, width = 8, units = "in")
+```
+
+
+The 'here' library makes it easier to work with files and subfolders while not having to type in full file paths. Then the here() function can be used to make loading and saving a work more straightforward and safer. Assuming a folder named “figures” exists in the project folder, the above code chuck works and saves p_out as a file in the figures directory here, in the current project folder.
+
+**2. Investigate the difference between a formula written as `facet_grid(sex ~ race)` versus one written as `facet_grid(~ sex + race)`.**
+
+```{r 4.2, message=FALSE, warning=FALSE}
+p <- ggplot(data = gss_sm, mapping = aes(x = age, y = childs)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  theme_bw()
+p1 <-  p + facet_grid(sex ~ race) +
+  labs(title = "sex ~ race") +
+  theme(plot.title = element_text(face = "bold", colour = "red"), strip.text = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+p2 <- p + scale_x_continuous(breaks = c(20, 50, 80)) +
+  facet_grid(~ sex + race) +
+  labs(title = "~ sex + race") +
+  theme(plot.title = element_text(face = "bold", colour = "red"), strip.text = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+p1+p2+labs(caption = "Source: General Social Survey data, 2016")
+```
+
+
+Both creates a two dimensional grid but with different appearance. Using only tilde creates both row and column labels while adding tilde and an addition sign creates only either row or column labels depending on the code.
+
+**3. Experiment to see what happens when you use `facet_wrap()` with more complex formulas like `facet_wrap(~ sex + race)` instead of facet_grid. Like `facet_grid()`, the `facet_wrap()` function can facet on two or more variables at once. But it will do it by laying the results out in a wrapped one-dimensional table instead of a fully cross-classified grid.**
+
+```{r 4.3, message=FALSE, warning=FALSE}
+p <- ggplot(data = gss_sm, mapping = aes(x = age, y = childs)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  theme_bw()
+p1 <- p + facet_grid(~ sex + race) +
+  scale_x_continuous(breaks = c(20,50,80)) +
+  labs(title = "Facet grid") +
+  theme(plot.title = element_text(face = "bold", colour = "red"), strip.text = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+p2 <- p + facet_wrap(~ sex + race) +
+  labs(title = "Facet wrap") +
+  theme(plot.title = element_text(face = "bold", colour = "red"), strip.text = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+p1+p2+labs(caption = "Source: General Social Survey data, 2016")
+```
+
+
+**4. Frequency polygons are closely related to histograms. Instead of displaying the count of observations using bars, they display it with a series of connected lines instead. You can try the various `geom_histogram()` calls in this chapter using `geom_freqpoly()` instead.**
+
+```{r 4.4, message=FALSE}
+p <- ggplot(data = midwest, mapping = aes(x = area)) + theme_bw()
+p1 <- p + geom_freqpoly() +
+  labs(title = "bins = 30 (default)") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10), panel.grid.minor = element_blank())
+p2 <- p + geom_freqpoly(bins = 10) +
+  labs(title = "bins = 10") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10), panel.grid.minor = element_blank())
+oh_wi <- c("OH", "WI")
+ps <- ggplot(data = subset(midwest, subset = state %in% oh_wi),
+             mapping = aes(x = percollege, color = state)) +
+  theme_bw()
+p3 <- ps + geom_freqpoly(bins = 20) +
+  scale_color_aaas(labels = c("Ohio", "Wisconsin")) +
+  labs(x = "per college", y = NULL, title = "subsetting, bins = 20") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10), 
+        legend.title=element_blank(), panel.grid.minor = element_blank())
+p1+p2+p3+labs(caption = "Source: Midwest demographics")
+```
+
+
+**5. A histogram bins observations for one variable and shows a bars with the count in each bin. We can do this for two variables at once, too. The `geom_bin2d()` function takes two mappings, x and y. It divides your plot into a grid and colors the bins by the count of observations in them. Try using it on the `gapminder` data to plot life expectancy versus per capita GDP. Like a histogram, you can vary the number or width of the bins for both x or y. Instead of saying `bins = 30` or `binwidth = 1`, provide a number for both x and y with, for example, `bins = c(20, 50)`. If you specify bindwith instead, you will need to pick values that are on the same scale as the variable you are mapping.**
+
+```{r 4.5}
+p <- ggplot(data = gapminder, mapping = aes(x = gdpPercap, y = lifeExp)) + theme_bw()
+p1 <- p + geom_bin_2d() +
+  scale_x_log10() +
+  scale_fill_gradientn(colours = terrain.colors(7)) +
+  labs(x = "GDP per Capita", y = "Life expectancy in years", title = "bins = 30 (default)") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10),
+        legend.title=element_blank(), panel.grid.minor = element_blank())
+p2 <- p + geom_bin_2d(bins = c(20, 50)) +
+  scale_x_log10() +
+  scale_fill_scico(palette = "lajolla") +
+  labs(x = NULL, y = NULL, title = "bins = c(20, 50)") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10),
+        legend.title=element_blank(), panel.grid.minor = element_blank())
+p3 <- p + geom_bin_2d(binwidth = c(6000, 3)) +
+  scale_x_continuous(breaks = c(30000, 90000),
+                     labels = dollar) +
+  scale_fill_viridis_c() +
+  labs(x = NULL, y = NULL, title = "binwidth = c(6000, 3)") +
+  theme(plot.title = element_text(face = "bold", colour = "red", size = 10),
+        legend.title=element_blank(), panel.grid.minor = element_blank())
+p1+p2+p3+labs(caption = "Source: Gapminder data")
+```
+
+
+`geom_bin2d()` is the two dimension version of the classic histogram. The plot area is split in a multitude of small squares, the number of points in each square is represented by its color. This is also a useful alternative to geom_point() in the presence of overplotting. bins = c(20, 50) creates 20 bins horizontally and 50 vertically.
+
+**6. Density estimates can also be drawn in two dimensions. The `geom_density_2d()` function draws contour lines estimating the joint distribution of two variables. Try it with the `midwest` data, for example, plotting percent below the poverty line (percbelowpoverty) against percent college-educated (percollege). Try it with and without a `geom_point()` layer.**
+
+```{r 4.6}
+p <- ggplot(data = midwest, mapping = aes(x = percbelowpoverty, y = percollege)) + theme_minimal()
+p1 <- p + geom_point(size = 0.5) +
+  geom_density_2d() +
+  scale_x_continuous(labels = percent_format(scale = 1)) +
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  labs(x = "Below the poverty line",
+       y = "College-educated",
+       title = "With geom point") +
+  theme(legend.position = "NONE")  
+p2 <- p + geom_density_2d() +
+  scale_x_continuous(labels = percent_format(scale = 1)) +
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  labs(x = NULL, y = NULL, title = "Without geom point") 
+p1+p2+labs(caption = "Source: Midwest demographics")&theme(plot.title = element_text(face = "bold", colour = "red"))
+```
+
+
+# 5 Graph tables, add labels, make notes
+
+**1. The `subset()` function is very useful when used in conjunction with a series of layered geoms. Go back to your code for the Presidential Elections plot (Figure 5.18) and redo it so that it shows all the data points but only labels elections since 1992. You might need to look again at the `elections_historic` data to see what variables are available to you. You can also experiment with subsetting by political party, or changing the colors of the points to reflect the winning party.**
+
+```{r 5.1, warning=FALSE}
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label)) +
+  geom_hline(yintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_vline(xintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_point() +
+  geom_text_repel() +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Winner's share of Popular Vote", y = "Winner's share of Electoral College Votes",
+       title = "Figure 5.18 Presidential Elections: Popular & Electoral College Margins", 
+       subtitle = "1824-2016, Data for 2016 are provisional",
+       caption = "Source: US Presidential Election vote shares") +
+  theme_minimal()
+p
+```
+
+
+```{r 5.1.1}
+cp_palette <- c("#2E74C0", "#CB454A")
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label)) +
+  geom_hline(yintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_vline(xintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_point() +
+  geom_point(data = subset(elections_historic, year > 1992), aes(color = win_party)) +
+  geom_text_repel(data = subset(elections_historic, year > 1992), aes(color = win_party), key_glyph = "rect") +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  scale_color_manual(values = cp_palette, labels = c("Democratic", "Republican")) +
+  labs(x = "Winner's share of Popular Vote", y = "Winner's share of Electoral College Votes",
+       title = "Presidential Elections: Popular & Electoral College Margins", 
+       subtitle = "Elections since 1992, Data for 2016 are provisional",
+       caption = "Source: US Presidential Election vote shares") +
+  theme_wsj() +
+  theme(plot.title = element_text(size = 10),
+        plot.subtitle = element_text(color = "red", face = "bold", size = 12),
+        plot.caption = element_text(size = 8),
+        legend.position = "top", legend.title=element_blank()) 
+p
+```
+
+```{r 5.1.2, warning=FALSE}
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label)) +
+  geom_hline(yintercept = 0.5, size = 0.5, color = "red") +
+  geom_vline(xintercept = 0.5, size = 0.5, color = "red") +
+  theme_economist()
+p + geom_point() +
+  geom_point(data = subset(elections_historic, win_party %in% "D.-R."), color = "#74c02e", size = 3) +
+  geom_text_repel() +
+  geom_text_repel(data = subset(elections_historic, win_party %in% "D.-R."), color = "#74c02e") +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Winner's share of Popular Vote", y = "Winner's share of Electoral College Votes",
+       title = "Presidential Elections: Popular & Electoral College Margins", 
+       subtitle = "Highlighted winner by Democratic - Republican party affiliation",
+       caption = "Source: US Presidential Election vote shares") +
+  theme(plot.title = element_text(size = 10, hjust = 0.5),
+        plot.subtitle = element_text(color = "#74c02e", size = 12, hjust = 0.5),
+        axis.title = element_text(size = 10), plot.caption = element_text(size = 8))
+```
+
+```{r 5.1.3, warning=FALSE}
+cb_palette <- c("#74c02e", "#2E74C0", "#CB454A", "#FEEA63")
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label)) +
+  geom_hline(yintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_vline(xintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_point(mapping = aes(color = win_party)) +
+  geom_text_repel(mapping = aes(color = win_party), key_glyph = "rect") +
+  scale_color_manual(values = cb_palette,
+                     labels = c("Democratic - Republican", "Democratic", "Republican", "Whig")) +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Winner's share of Popular Vote", y = "Winner's share of Electoral College Votes",
+         title = "Presidential Elections: Popular & Electoral College Margins", 
+         subtitle = "Colored by winner party affiliation",
+         caption = "Source: US Presidential Election vote shares",
+         color = "Winner Party") +
+  theme_wsj() +
+  theme(plot.title = element_text(size = 10),
+        plot.subtitle = element_text(color = "red", face = "bold", size = 12),
+        plot.caption = element_text(size = 8),
+        legend.position = "top", legend.title=element_blank()) 
+p
+```
+
+
+**2. Use `geom_point()` and `reorder()` to make a Cleveland dot plot of all Presidential elections, ordered by share of the popular vote.**
+
+```{r 5.2, message=FALSE}
+cb_palette <- c("#74c02e", "#2E74C0", "#CB454A", "#FEEA63")
+by_president <- elections_historic %>% 
+  group_by(winner, win_party) %>% 
+  summarize(popular_pct_mean = mean(popular_pct, na.rm = TRUE)) 
+p <- ggplot(data = by_president,
+            mapping = aes(x = popular_pct_mean, y = reorder(winner, popular_pct_mean),
+                          color = win_party)) +
+  geom_point(size=3) +
+  scale_color_manual(values = cb_palette,
+                     labels = c("Democratic - Republican", "Democratic", "Republican", "Whig")) +
+  scale_x_continuous(labels = percent) +
+  labs(x = "Winner's share of popular vote",
+         y = "", color = "Winner Party",
+       caption = "Source: US Presidential Election vote shares") +
+  theme_classic() +
+  theme(legend.position="top", legend.title=element_blank()) 
+p
+```
+
+
+**3. Try using `annotate()` to add a rectangle that lightly colors the entire upper left quadrant of Figure 5.18.**
+
+```{r 5.3, warning=FALSE}
+p <- ggplot(elections_historic, aes(x = popular_pct, y = ec_pct, label = winner_label)) +
+  geom_hline(yintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_vline(xintercept = 0.5, size = 1.4, color = "gray80") +
+  geom_point() +
+  geom_text_repel() +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(x = "Winner's share of Popular Vote", y = "Winner's share of Electoral College Votes",
+         title = "Presidential Elections: Popular & Electoral College Margins", 
+         subtitle = "1824-2016, Data for 2016 are provisional",
+         caption = "Source: US Presidential Election vote shares") +
+  annotate(geom = "rect", xmin = 0.34, xmax = 0.498, ymin = 0.509, ymax = 1, fill = "red", alpha = 0.3) + 
+  annotate(geom = "label", x = 0.24, y = 0.98, label = "High electoral and \n low popular votes", hjust = 0) +
+  annotate(geom = "segment", x = 0.325, y = 0.97, xend = 0.36, yend = 0.95, arrow = arrow(length = unit(2, "mm"))) +
+  theme_minimal()
+p
+```
+
+
+**4. The main action verbs in the dplyr library are `group_by()`, `filter()`, `select()`, `summarize()`, and `mutate()`. Practice with them by revisiting the `gapminder` data to see if you can reproduce a pair of graphs from Chapter One, shown here again in Figure 5.28. You will need to filter some rows, group the data by continent, and calculate the mean life expectancy by continent before beginning the plotting process.**
+
+```{r 5.4}
+by_continent <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise(lifeExp_mean = round(mean(lifeExp, na.rm = TRUE), 2))
+p <- ggplot(by_continent, aes(x = reorder(continent, lifeExp_mean), y = lifeExp_mean)) +
+  geom_col(aes(fill = continent)) +
+  coord_flip() +
+  scale_fill_scico_d(palette = "berlin") +
+  labs(x = " ", y = "Average life expectancy in years", caption = "Source: Gapminder data") +
+  theme(panel.background = element_blank(), legend.position = "none") 
+p
+```
+
+
+```{r 5.4.1}
+by_continent <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise(lifeExp_mean = round(mean(lifeExp, na.rm = TRUE), 2))
+p <- ggplot(by_continent, aes(x = reorder(continent, lifeExp_mean), y = lifeExp_mean)) 
+p + geom_point(size = 4, colour = "black", show.legend = FALSE) +
+  geom_point(aes(colour = continent), size = 3) +
+  coord_flip() +
+  scale_color_stata()+
+  labs(x = NULL, y = "Average life expectancy in years", caption = "Source: Gapminder data") +
+  theme(plot.background = element_rect(fill = "#e8f4f8"), panel.background = element_rect(fill = "white"),
+        panel.grid.major.x = element_blank(), panel.grid.major.y = element_line(color = "#e8f4f8"),
+        axis.title.y = element_text(size = 6), axis.text = element_text(face = "bold"), 
+        plot.caption = element_text(size = 6), legend.position = "none")
+```
+
+
+**5. Get comfortable with grouping, mutating, and summarizing data in pipelines. This will become a routine task as you work with your data. There are many ways that tables can be aggregated and transformed. Remember `group_by()` groups your data from left to right, with the rightmost or innermost group being the level calculations will be done at; `mutate()` adds a column at the current level of grouping; and `summarize()` aggregates to the next level up. Try creating some grouped objects from the GSS data, calculating frequencies as you learned in this Chapter, and then check to see if the totals are what you expect. For example, start by grouping degree by race, like this:**
+
+```{r 5.5, message=FALSE, warning=FALSE}
+degree_by_race <- gss_sm %>% group_by(race, degree) %>%
+  summarize(number = n()) %>%
+  mutate(frequency = number / sum(number), percent = round(frequency*100, 0))
+p <- ggplot(degree_by_race, aes(x = degree, y = percent, fill = degree))
+p + geom_col(position = "dodge2") +
+  coord_flip() + 
+  scale_y_continuous(labels = percent_format(scale = 1)) +
+  scale_fill_brewer(palette = "Accent") +
+  facet_grid(~ race) +
+  labs(x = NULL, y = NULL, fill = "degree", title = "Row-marginals for education",
+       caption = "Source: General Social Survey data, 2016") +
+  guides(fill = FALSE) + 
+  theme(plot.title = element_text(face = "bold"), panel.grid.minor = element_blank(),
+        legend.title=element_blank(), plot.background = element_blank()) +
+  theme_minimal()
+```
+
+
+**6. This code is similar to what you saw earlier, but a little more compact. (We calculate the pct values directly.) Check the results are as you expect by grouping by race and summing the percentages. Try doing the same exercise grouping by sex or region.**
+
+```{r 5.6, message=FALSE}
+sx <- gss_sm %>% group_by(sex, region) %>%
+    summarize(number = n()) %>%
+    mutate(percent = round(number / sum(number)*100, 0)) 
+sx
+```
+
+
+Count of and percent values of region by sex.
+
+```{r 5.6.1}
+sx %>% group_by(sex) %>% 
+  summarize(total = sum(percent))
+```
+
+
+Checking if percentage values associated with sex are sum up to 100%. A bit of rounding error may occur like in this case.
+
+```{r 5.6.2}
+sx %>% group_by(region) %>% 
+  summarize(total = sum(percent))
+```
+
+
+Checking if percentage values associated with region are sum up to 100%.
+
+**7. Try summary calculations with functions other than sum. Can you calculate the mean and median number of children by degree? (Hint: the childs variable in gss_sm has children as a numeric value.)**
+
+```{r 5.7}
+by_childs <- gss_sm %>% 
+  group_by(degree) %>% 
+  summarise(childs_mean = mean(childs, na.rm = TRUE),
+            childs_median = median(childs, na.rm = TRUE))
+by_childs
+```
+
+
+**8. dplyr has a large number of helper functions that let you summarize data in many different ways. The vignette on window functions included with the dplyr documentation is a good place to begin learning about these. You should also look at Chapter 3 of Wickham & Grolemund (2016) for more information on transforming data with dplyr.**
+
+```{r 5.8}
+browseVignettes("dplyr")
+```
+
+
+**9. Experiment with the `gapminder` data to practice some of the new geoms we have learned. Try examining population or life expectancy over time using a series of boxplots. (Hint: you may need to use the group aesthetic in the `aes()` call. Can you facet this boxplot by continent? Is anything different if you create a tibble from `gapminder` that explicitly groups the data by year and continent first, and then create your plots with that?**
+
+```{r 5.9}
+pp <- ggplot(data = gapminder, mapping = aes(x = year, y = pop)) + theme_classic()
+p1 <- pp + geom_boxplot(mapping = aes(fill = continent)) +
+  coord_flip() +
+  scale_y_log10(labels = label_log(digits = 2)) +
+  scale_fill_brewer(palette="BuPu", name = NULL) +
+  labs(x = NULL, y = "Population", title = "Population over time") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+pl <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) + theme_classic()
+p2 <- pl + geom_boxplot(mapping = aes(fill = continent)) +
+  coord_flip() +
+  scale_y_log10() +
+  scale_fill_brewer(palette="Dark2", name = NULL) +
+  labs(x = NULL, y = "Life expectancy in years", title = "Life expectancy over time",
+       caption = "Source: Gapminder data") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+p1+p2
+```
+
+
+```{r 5.9.1}
+p <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) +
+  geom_boxplot(mapping = aes(fill = continent)) +
+  facet_wrap(~ continent, nrow = 1) +
+  scale_x_continuous(breaks = c(1960, 1980, 2000)) +
+  scale_y_log10() +
+  scale_fill_brewer(palette="Dark2") +
+  labs(x = NULL, y = "Life expectancy in years", title = "Life expectancy over time",
+       caption = "Source: Gapminder data") +
+  guides(fill = FALSE) +
+  theme_classic() +
+  theme(strip.text = element_text(face = "bold", colour = "red"),
+        plot.title = element_text(face = "bold", color = "red")) 
+p
+```
+
+
+**10. Read the help page for `geom_boxplot()` and take a look at the notch and varwidth options. Try them out to see how they change the look of the plot.**
+
+```{r 5.10}
+b <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) +theme_classic()
+p <- b + geom_boxplot(mapping = aes(fill = continent), notch = TRUE) +
+  scale_fill_cosmic("hallmarks_light") +
+  labs(x = NULL, y = "Life expectancy in years", title = "With notch",
+       caption = "Source: Gapminder data") +
+  theme(plot.title = element_text(face = "bold", color = "red"), legend.title = element_blank()) 
+p
+```
+
+
+Notch - if `FALSE` (default) make a standard box plot. If `TRUE`, make a notched box plot. Notches are used to compare groups; if the notches of two boxes do not overlap, this suggests that the medians are significantly different.
+
+```{r 5.10.1}
+b <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) + theme_classic()
+p<- b + geom_boxplot(mapping = aes(fill = continent), varwidth = TRUE) +
+  scale_fill_paletteer_d("rtist::vangogh") +
+  labs(x = NULL, y = "Life expectancy in years", title = "With varwidth",
+       caption = "Source: Gapminder data") +
+  theme(plot.title = element_text(face = "bold", color = "red"), legend.title = element_blank()) 
+p 
+```
+
+
+Varwidth - if `FALSE` (default) make a standard box plot. If `TRUE`, boxes are drawn with widths proportional to the square-roots of the number of observations in the groups (possibly weighted, using the weight aesthetic).
+
+**11. As an alternative to `geom_boxplot()` try `geom_violin()` for a similar plot, but with a mirrored density distribution instead of a box and whiskers.**
+
+```{r 5.11}
+b <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) + theme_classic()
+p <- b + geom_violin(mapping = aes(fill = continent)) +
+  scale_fill_paletteer_d("lisa::FridaKahlo") +
+  labs(x = NULL, y = "Life expectancy in years", title = "Geom violin",
+       caption = "Source: Gapminder data") +
+  theme(plot.title = element_text(face = "bold", color = "red"), legend.title = element_blank())
+p
+```
+
+
+Violin plot allows to visualize the distribution of a numeric variable for one or several groups. Each ‘violin’ represents a group or a variable. The shape represents the density estimate of the variable: the more data points in a specific range, the larger the violin is for that range. It allows to compare both the ranking of several groups and their distribution.
+
+**12. `geom_pointrange()` is one of a family of related geoms that produce different kinds of error bars and ranges, depending on your specific needs. They include `geom_linerange()`, `geom_crossbar()`, and `geom_errorbar()`. Try them out using `gapminder` or `organdata` to see how they differ.**
+
+These geoms are to present uncertanity in the data in case of discrete values.
+
+```{r 5.12, warning=FALSE}
+by_continent <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise_if(is.numeric, funs(mean, sd), na.rm = TRUE) %>% 
+  ungroup()
+by_continent
+```
+
+
+```{r 5.12.1}
+p <- ggplot(data = by_continent, mapping = aes(x = reorder(continent, lifeExp_mean), y = lifeExp_mean, fill = continent)) +
+  guides(fill = FALSE, color = FALSE) +
+  theme_classic()
+p1 <- p + geom_pointrange(mapping = aes(ymin = lifeExp_mean - lifeExp_sd, ymax = lifeExp_mean + lifeExp_sd,
+                                        color = continent)) +
+  coord_flip() +
+  scale_color_hue(c = 40) +
+  labs(x = NULL, y = NULL, title = "Geom pointrange") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+p2 <- p + geom_linerange(mapping = aes(ymin = lifeExp_mean - lifeExp_sd, ymax = lifeExp_mean + lifeExp_sd)) +
+  coord_flip() +
+  labs(x = NULL, y = NULL, title = "Geom linerange") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+p3 <- p + geom_crossbar(mapping = aes(ymin = lifeExp_mean - lifeExp_sd, ymax = lifeExp_mean + lifeExp_sd), width = 0.2) +
+  coord_flip() +
+  labs(x = "Life expectancy in years", y = NULL, title = "Geom errorbar") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+p4 <- p + geom_errorbar(mapping = aes(ymin = lifeExp_mean - lifeExp_sd, ymax = lifeExp_mean + lifeExp_sd), width = 0.2) +
+  coord_flip() +
+  labs(x = NULL, y = NULL, title = "Geom crossbar", caption = "Source: Gapminder data") +
+  theme(plot.title = element_text(face = "bold", color = "red"))
+p1+p2+p3+p4
+```
+
+These functions works basically the same as the most common 'geom_errorbar()'. The error bar gives information on how the individual observations are dispersed around the average, they are to display uncertainty.
+
+```{r}
+citHeader("To cite socviz in publications use:")
+
+citEntry(entry = "Book",
+  title        = "Data Visualization: A Practical Introduction",
+  author       = personList(as.person("Kieran Healy")),
+  publisher    = "Princeton University Press",
+  address      = "Princeton",
+  year         = "2019",
+  url          = "http://www.socviz.co",
+
+  textVersion  =
+  paste("Kieran Healy (2019).",
+        "Data Visualization: A Practical Introduction.",
+        "Princeton University Press.",
+        "URL http://socviz.co")
+)
+```
+
