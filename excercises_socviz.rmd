@@ -159,7 +159,7 @@ The fill aesthetic controls the color of the standard error ribbon. If we want t
 
 Faceted plots may fill up a lot of space so after a consideration only a subset of data is being used in this exercise.
 
-Facet warp, as a series of panels wrapped into a grid, is generally more useful because it produces plots only for the combinations of variables that have values while facet grid also produces empty plots. Facet grid is more complex and can cross-classify data in a two dimensional grid.
+Facet wrap, as a series of panels wrapped into a grid, is generally more useful because it produces plots only for the combinations of variables that have values while facet grid also produces empty plots. Facet grid is more complex and can cross-classify data in a two dimensional grid.
 
 In this exercise only facet grid is used to experiment with faceting.
 
@@ -556,13 +556,6 @@ sx %>% group_by(sex) %>%
 
 Checking if percentage values associated with sex are sum up to 100%. A bit of rounding error may occur like in this case.
 
-```{r 5.6.2}
-sx %>% group_by(region) %>% 
-  summarize(total = sum(percent))
-```
-
-
-Checking if percentage values associated with region are sum up to 100%.
 
 **7. Try summary calculations with functions other than sum. Can you calculate the mean and median number of children by degree? (Hint: the childs variable in gss_sm has children as a numeric value.)**
 
@@ -585,17 +578,14 @@ browseVignettes("dplyr")
 **9. Experiment with the `gapminder` data to practice some of the new geoms we have learned. Try examining population or life expectancy over time using a series of boxplots. (Hint: you may need to use the group aesthetic in the `aes()` call. Can you facet this boxplot by continent? Is anything different if you create a tibble from `gapminder` that explicitly groups the data by year and continent first, and then create your plots with that?**
 
 ```{r 5.9}
-pp <- ggplot(data = gapminder, mapping = aes(x = year, y = pop)) + theme_classic()
-p1 <- pp + geom_boxplot(mapping = aes(fill = continent)) +
-  coord_flip() +
+pp <- ggplot(data = gapminder, mapping = aes(x = year, y = pop, group = continent)) + theme_classic()
+p1 <- pp + geom_boxplot(aes(fill = continent)) +
   scale_y_log10(labels = label_log(digits = 2)) +
   scale_fill_brewer(palette="BuPu", name = NULL) +
   labs(x = NULL, y = "Population", title = "Population over time") +
   theme(plot.title = element_text(face = "bold", color = "red"))
-pl <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) + theme_classic()
-p2 <- pl + geom_boxplot(mapping = aes(fill = continent)) +
-  coord_flip() +
-  scale_y_log10() +
+pl <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp, group = continent)) + theme_classic()
+p2 <- pl + geom_boxplot(aes(fill = continent)) +
   scale_fill_brewer(palette="Dark2", name = NULL) +
   labs(x = NULL, y = "Life expectancy in years", title = "Life expectancy over time",
        caption = "Source: Gapminder data") +
@@ -605,19 +595,38 @@ p1+p2
 
 
 ```{r 5.9.1}
-p <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp)) +
-  geom_boxplot(mapping = aes(fill = continent)) +
+pl <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp, group = continent)) + theme_classic()
+p1 <- pl + geom_boxplot(aes(fill = continent)) +
   facet_wrap(~ continent, nrow = 1) +
   scale_x_continuous(breaks = c(1960, 1980, 2000)) +
-  scale_y_log10() +
   scale_fill_brewer(palette="Dark2") +
   labs(x = NULL, y = "Life expectancy in years", title = "Life expectancy over time",
        caption = "Source: Gapminder data") +
-  guides(fill = FALSE) +
-  theme_classic() +
-  theme(strip.text = element_text(face = "bold", colour = "red"),
-        plot.title = element_text(face = "bold", color = "red")) 
-p
+  theme(plot.title = element_text(face = "bold", color = "red"),
+        strip.text = element_text(face = "bold", colour = "red"))
+p1
+```
+
+
+```{r 5.9.2}
+pl <- ggplot(data = gapminder, mapping = aes(x = year, y = lifeExp, group = continent)) + theme_classic()
+p1 <- pl + geom_boxplot(aes(fill = continent)) +
+  scale_fill_brewer(palette="Dark2", name = NULL) +
+  labs(x = NULL, y = "Life expectancy in years", title = "Life expectancy over time")+
+  theme(plot.title = element_text(face = "bold"),
+        legend.position="none")
+p2 <- gapminder %>% 
+  group_by(year, continent) %>% 
+  ggplot(aes(x = year, y = lifeExp)) + 
+           geom_boxplot(aes(fill = continent)) +
+           scale_fill_brewer(palette="Dark2", name = NULL) +
+           labs(x = NULL,
+                y = NULL,
+                title = "Life expectancy over time (grouped)",
+                caption = "Source: Gapminder data") +
+           theme_classic() +
+           theme(plot.title = element_text(face = "bold", color = "red"))
+p1+p2
 ```
 
 
